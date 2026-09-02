@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Rynura Lock</string>
+    <string name="accessibility_service_label">Rynura App Lock Service</string>
+    <string name="accessibility_service_description">Rynura Lock detects when a protected application is opened to display the secure biometric/PIN unlock screen and prevent unauthorized access.</string>
+</resources>
