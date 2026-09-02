@@ -2,21 +2,20 @@ name: Build Rynura Lock APK
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build Android APK
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Rynura source code
+      - name: Checkout Rynura source
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -24,15 +23,46 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
-      - name: Give permission to Gradle
-        run: chmod +x gradlew
+      - name: Check Android project
+        shell: bash
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "::error::gradlew file missing"
+            exit 1
+          fi
 
-      - name: Build Rynura Lock debug APK
-        run: ./gradlew clean assembleDebug --stacktrace
+          if [ ! -f "app/build.gradle.kts" ] && [ ! -f "app/build.gradle" ]; then
+            echo "::error::app/build.gradle.kts or app/build.gradle missing"
+            exit 1
+          fi
 
-      - name: Upload Rynura Lock APK
+      - name: Enable Gradle
+        run: chmod +x ./gradlew
+
+      - name: Remove invalid AI Studio signing line
+        shell: bash
+        run: |
+          if [ -f "app/build.gradle.kts" ]; then
+            sed -i '/signingConfig[[:space:]]*=[[:space:]]*signingConfigs\.getByName("debugConfig")/d' app/build.gradle.kts
+          fi
+
+      - name: Create environment file
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > .env
+          else
+            echo "::warning::GEMINI_API_KEY secret not added"
+            touch .env
+          fi
+
+      - name: Build Rynura debug APK
+        run: ./gradlew clean :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Upload Rynura APK
         uses: actions/upload-artifact@v4
         with:
           name: Rynura-Lock-debug-APK
